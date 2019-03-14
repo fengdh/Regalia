@@ -4,7 +4,18 @@ Manage recordset which record is represented by column-no-indexed array.
  
 * Using array instead of K-V object for record to reduce overhead when transferring in JSON format.
 * Weaving raw data into an array-like proxy standing for recordset.
-* Treating record just like ordinary K-V object if retrivig it as an element from recordset proxy.
+* Treating record just like ordinary k-v object if retrivig it as an element from recordset proxy.
+
+Regalia.weave(rawData) returns an array-like recordset proxy.
+It works just like an array, almost comply with all Array.prototype API (except for flat/flatMap/join which are nonsense).
+* You can use square bracket to get a record at some index: `record = recordset[index]`.
+* Or assign new value with a compatible k-v object at some index, which will be applied to underline raw array with column-no-indexed values
+* What record you got is an ordinary k-v object, use column name to retrieve or modify its value.
+* You can use for-in/of loops or iterator upon recordset proxy, where compatible k-v object is passed in loop.
+* You can use forEach/map/filter/reduce/some/every/sort etc. with callback, where callback is passed with compatible k-v object.
+* concat/copyWithin/pop/push/shift/unshift etc. basically works well.
+* If Array.prototype method return a new array, create a new proxy.
+* If Array.prototype method return itself, so on too.
 
 **from WordNet**
 > *array, raiment, regalia, especially fine or decorative clothing*
