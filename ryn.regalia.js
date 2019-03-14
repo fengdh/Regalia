@@ -70,7 +70,7 @@ var Regalia = {
 }
 
 const
-    DEFAULt   = Symbol.for('default'),
+    DEFAULT   = Symbol.for('default'),
     RAW       = Symbol.for('raw'),
     PAL       = Symbol.for('pal'),
     UNSUPPORT = Symbol.for('unsupport'),
@@ -84,11 +84,11 @@ function buildWith(type, ...args) {
             get(target, prop, proxy) {
                 var idx = toIdx(prop);
                 return idx == prop
-                    ? (console.log('get[' + idx + ']'), _construct(target[idx]))
-                    : (METHOD[prop] || METHOD[DEFAULt])(proxy, target, prop);
+                    ? _construct(target[idx])
+                    : (METHOD[prop] || METHOD[DEFAULT])(proxy, target, prop);
             },
             set(target, prop, value) {
-                var idx = toIdx(prop); console.log('set[' + idx + ']');
+                var idx = toIdx(prop);
                 return idx == prop
                     ? target[idx] = Array.isArray(value) ? value : _destruct(value)
                     : target[prop] = value;
@@ -224,7 +224,7 @@ function buildWith(type, ...args) {
         join:         IMPL[UNSUPPORT],
 
         // default methods depend on []-g/setter of recordset proxy: fill, forEach, map, every, some
-        [DEFAULt]:    (proxy, target, func) => target[func],
+        [DEFAULT]:    (proxy, target, func) => target[func],
     }
 
     return build(...args);
