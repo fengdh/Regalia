@@ -67,6 +67,10 @@ var Regalia = {
    revert: recordset => !!recordset ? recordset[RAW][0] : [],
 
    meta:   recordset => !!recordset ? recordset[RAW][1] : [],
+
+   combine: (records) => {
+
+        },
 }
 
 const
@@ -121,6 +125,8 @@ function buildWith(type, ...args) {
         // destruct arguments
         _destructArgs = values => values.map(e => Array.isArray(e) ? e : _destruct(e)),
 
+        _destructKVs = values => values.map(e => _destruct(e)),
+
         // destruct arguments, flat array too (only used by implementation for #concat)
         _flatDestructArgs = values => values.reduce((a, e) =>　(Array.isArray(e) ? [...a, ..._destructArgs(e)] : [...a, _destruct(e)]), []),
 
@@ -162,8 +168,11 @@ function buildWith(type, ...args) {
             // applying callback on each record (= columnNo-indexed array) which is turned into k-v object automatically. 
             callback:   (proxy, target, func, f = v => v) => (...args) => f(target[func](...adaptCallback(proxy, args, func)), proxy),
 
+            // Use a new set of k-v records to create a new recordset proxy with same structure
+            spread: (proxy, target, func) => ([...args]) => new Proxy([..._destructKVs(args)], HANDLER),
+
             // unsupported method
-            [UNSUPPORT]: (proxy, target, func) => (...args) => {throw `unsuport method: ${func}(...)`}            
+            [UNSUPPORT]: (proxy, target, func) => (...args) => {throw `unsuport method: ${func}(...)`},            
         };
 
     var METHOD = {
@@ -225,6 +234,8 @@ function buildWith(type, ...args) {
 
         // default methods depend on []-g/setter of recordset proxy: fill, forEach, map, every, some
         [DEFAULT]:    (proxy, target, func) => target[func],
+
+        spread:       IMPL.spread,
     }
 
     return build(...args);
