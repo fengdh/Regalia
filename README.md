@@ -17,6 +17,14 @@ It works just like an array, almost comply with all Array.prototype API (except 
 * If Array.prototype method return a new array, create a new proxy.
 * If Array.prototype method return itself, so on too.
 
+Since it is unable to override spread operator for array, a recordset proxy can call its `spread([...proxies])` to create a new 
+recordset proxy with same set of column definitions.
+`
+var one = Regalia.weave([[...],...], 'col,...');
+var [head,...,tail]
+var two = one.spread([{name: 'Director'}, ...one.filter((e,i) => (i % 2 === 0))])
+`
+
 **from WordNet**
 > *array, raiment, regalia, especially fine or decorative clothing*
 
