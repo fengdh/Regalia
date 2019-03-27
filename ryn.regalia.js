@@ -87,7 +87,7 @@ function buildWith(type, ...args) {
         HANDLER = {
             get(target, prop, proxy) {
                 var idx = toIdx(prop);
-                return idx == prop
+                return idx == prop && idx < target.length
                     ? _construct(target[idx])
                     : (METHOD[prop] || METHOD[DEFAULT])(proxy, target, prop);
             },
