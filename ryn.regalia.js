@@ -67,10 +67,6 @@ var Regalia = {
    revert: recordset => !!recordset ? recordset[RAW][0] : [],
 
    meta:   recordset => !!recordset ? recordset[RAW][1] : [],
-
-   combine: (records) => {
-
-        },
 }
 
 const
