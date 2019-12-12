@@ -47,11 +47,11 @@ var Regalia = {
      *
      * return an array-like recordset proxy.
      */
-    weave(data, type) {
+    weave(data, type, ...any) {
         type = type || data['@meta'];
         type = typeof type === 'string' ? type.split(/,\s*/) : (type || []);
     
-        return buildWith(type, (Array.isArray(data) ? data : data[PROP.arr] || []));
+        return buildWith(type, (Array.isArray(data) ? data : data[PROP.arr] || []), ...any);
     },
     
     /**
@@ -67,6 +67,10 @@ var Regalia = {
    revert: recordset => !!recordset ? recordset[RAW][0] : [],
 
    meta:   recordset => !!recordset ? recordset[RAW][1] : [],
+
+   isElementProxy: obj => obj != null ? obj[IS_ELM_PROXY] : false,
+
+   isNullElement:  obj => obj == null ? true : obj[IS_ELM_NULL],
 }
 
 const
@@ -75,9 +79,17 @@ const
     PAL       = Symbol.for('pal'),
     UNSUPPORT = Symbol.for('unsupport'),
     PROP      = {arr: '@arr', meta: '@meta'},
-    toIdx     = prop => typeof prop === 'symbol' ? void 0 : +prop;
+    toIdx     = prop => typeof prop === 'symbol' ? void 0 : +prop,
+    ELM       = Symbol('elm'),
+IS_ELM_PROXY  = Symbol('is_elm_proxy'),
+IS_ELM_NULL   = Symbol('is_elm_null'),
+    NULLOBJ   = {};
 
-function buildWith(type, ...args) {
+function fetch(obj) {
+    return obj != null ? (obj[IS_ELM_PROXY] ? obj[ELM] : obj) : obj; 
+}
+
+function buildWith(type, arr, elmHandler, ...args) {
     var 
         // proxy handler for recordset
         HANDLER = {
@@ -103,20 +115,28 @@ function buildWith(type, ...args) {
         // columnName-to-index map
         _cols      = Array.isArray(type) ? type.reduce((v, c, i) => (v[c] = i, v), {}) : {},
 
+        // proxy handler for array element
+        _elmHandler = {
+            get(target, prop) {
+                switch (prop) {
+                    case IS_ELM_PROXY: return true;
+                    case IS_ELM_NULL:  return target === NULLOBJ;
+                    case ELM:          return target;
+                }
+                var idx = toIdx(prop);
+                return target[idx == prop ? idx : (!(prop in Object.prototype) && prop in _cols ? +_cols[prop] : prop)];
+            },
+            set(target, prop, value) {
+                var idx = toIdx(prop);
+                return target[idx == prop ? idx : (prop in _cols ? +_cols[prop] : prop)] = value;
+            },
+        },
+
         // construct record proxy, wrapping column-no-indexed array into k-v compatible proxy
-        _construct = e => new Proxy(e, {
-                    get(target, prop) {
-                        var idx = toIdx(prop);
-                        return target[idx == prop ? idx : (!(prop in Object.prototype) && prop in _cols ? +_cols[prop] : prop)];
-                    },
-                    set(target, prop, value) {
-                        var idx = toIdx(prop);
-                        return target[idx == prop ? idx : (prop in _cols ? +_cols[prop] : prop)] = value;
-                    }
-                }),
+        _construct = e => new Proxy(e != null ? e : NULLOBJ, _elmHandler),
 
         // destruct k-v object into column-no-indexed array
-        _destruct     = e => [...type].map((_, i) => e[type[i]]),
+        _destruct     = e => e != null ? [...type].map((_, i) => e[type[i]]) : null,
         
         // destruct arguments
         _destructArgs = values => values.map(e => Array.isArray(e) ? e : _destruct(e)),
@@ -163,6 +183,10 @@ function buildWith(type, ...args) {
             // Execute operation upon underline raw array of records,
             // applying callback on each record (= columnNo-indexed array) which is turned into k-v object automatically. 
             callback:   (proxy, target, func, f = v => v) => (...args) => f(target[func](...adaptCallback(proxy, args, func)), proxy),
+
+            // Execute operation upon underline raw array of records,
+            // applying callback on each record (= columnNo-indexed array) which will convert back k-v object in arguments into columnNo-indexed array transparently. 
+            callbackRaw:(proxy, target, func, f = v => v) => (...args) => f(target[func](...adaptCallback(proxy, args.map(fetch), func)), proxy),
 
             // Use a new set of k-v records to create a new recordset proxy with same structure
             spread: (proxy, target, func) => ([...args]) => new Proxy([..._destructKVs(args)], HANDLER),
@@ -215,7 +239,7 @@ function buildWith(type, ...args) {
 
         // return array-like recordset proxy itself, callback is passed with k-v compatible record proxy
         sort:         (proxy, target, func) => IMPL.callback(proxy, target, func, self),
-        splice:       (proxy, target, func) => IMPL.callback(proxy, target, func, self),
+        splice:       (proxy, target, func) => IMPL.callbackRaw(proxy, target, func, self),
 
         // []-getter based, callback is passed with k-v compatible record proxy
         // forEach, map, every, some
@@ -234,7 +258,7 @@ function buildWith(type, ...args) {
         spread:       IMPL.spread,
     }
 
-    return build(...args);
+    return build(arr, ...args);
 }
 
 export default Regalia;
